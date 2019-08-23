@@ -2610,6 +2610,59 @@ TEST_URLS = (
     }),
 
     ##################################
+    # NotifyPlivo
+    ##################################
+    ('plivo://', {
+        # No hostname/apikey specified
+        'instance': None,
+    }),
+    ('plivo://{}@{}/15551232000'.format('a' * 10, 'a' * 25), {
+        # invalid auth id
+        'instance': TypeError,
+    }),
+    ('plivo://{}@{}/15551232000'.format('a' * 25, 'a' * 10), {
+        # invalid token
+        'instance': TypeError,
+    }),
+    ('plivo://{}@{}/123'.format('a' * 25, 'a' * 25), {
+        # invalid phone number
+        'instance': TypeError,
+    }),
+    ('plivo://{}@{}/abc'.format('a' * 25, 'a' * 25), {
+        # invalid phone number
+        'instance': TypeError,
+    }),
+    ('plivo://{}@{}/15551232000'.format('a' * 25, 'a' * 25), {
+        # target phone number becomes who we text too; all is good
+        'instance': plugins.NotifyPlivo,
+    }),
+    ('plivo://{}@{}/15551232000/abcd'.format('a' * 25, 'a' * 25), {
+        # invalid target phone number; we fall back to texting ourselves
+        'instance': plugins.NotifyPlivo,
+    }),
+    ('plivo://{}@{}/15551232000/123'.format('a' * 25, 'a' * 25), {
+        # invalid target phone number; we fall back to texting ourselves
+        'instance': plugins.NotifyPlivo,
+    }),
+    ('plivo://{}@{}/?from=15551233000&to=15551232000'.format(
+        'a' * 25, 'a' * 25), {
+            # reference to to= and frome=
+            'instance': plugins.NotifyPlivo,
+    }),
+    ('plivo://{}@{}/15551232000'.format('a' * 25, 'a' * 25), {
+        'instance': plugins.NotifyPlivo,
+        # throw a bizzare code forcing us to fail to look it up
+        'response': False,
+        'requests_response_code': 999,
+    }),
+    ('plivo://{}@{}/15551232000'.format('a' * 25, 'a' * 25), {
+        'instance': plugins.NotifyPlivo,
+        # Throws a series of connection and transfer exceptions when this flag
+        # is set and tests that we gracfully handle them
+        'test_requests_exceptions': True,
+    }),
+
+    ##################################
     # NotifyNexmo
     ##################################
     ('nexmo://', {
@@ -3744,7 +3797,49 @@ def test_notify_messagebird_plugin(mock_post):
         assert False
 
     except TypeError:
-        # Exception should be thrown about the fact authkey was not
+        # Exception should be thrown about the fact the apikey was not
+        # specified
+        assert True
+
+
+@mock.patch('requests.post')
+def test_notify_plivo_plugin(mock_post):
+    """
+    API: NotifyPlivo() Extra Checks
+
+    """
+    # Disable Throttling to speed testing
+    plugins.NotifyBase.request_rate_per_sec = 0
+
+    # Prepare our response
+    response = requests.Request()
+    response.status_code = requests.codes.ok
+
+    # Prepare Mock
+    mock_post.return_value = response
+
+    # Initialize some generic (but valid) tokens
+    token = '{}'.format('a' * 25)
+    auth_id = '{}'.format('a' * 25)
+    source = '+1 (555) 123-3456'
+
+    try:
+        # No authkey specified
+        plugins.NotifyPlivo(auth_id=None, token=token, source=source)
+        assert False
+
+    except TypeError:
+        # Exception should be thrown about the fact the auth_id was not
+        # specified
+        assert True
+
+    try:
+        # No authkey specified
+        plugins.NotifyPlivo(auth_id=auth_id, token=None, source=source)
+        assert False
+
+    except TypeError:
+        # Exception should be thrown about the fact the token was not
         # specified
         assert True
 

@@ -349,7 +349,7 @@ class NotifyZulip(NotifyBase):
         return '{schema}://{botname}@{org}/{token}/' \
             '{targets}?{args}'.format(
                 schema=self.secure_protocol,
-                botname=self.botname,
+                botname=NotifyZulip.quote(self.botname, safe=''),
                 org=NotifyZulip.quote(organization, safe=''),
                 token=NotifyZulip.quote(self.token, safe=''),
                 targets='/'.join(
