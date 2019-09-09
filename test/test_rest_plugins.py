@@ -2843,6 +2843,54 @@ TEST_URLS = (
     }),
 
     ##################################
+    # NotifyPopcorn (PopcornNotify)
+    ##################################
+    ('popcorn://', {
+        # No hostname/apikey specified
+        'instance': None,
+    }),
+    ('popcorn://{}/1232348923489234923489234289-32423'.format('a' * 9), {
+        # invalid phone number
+        'instance': plugins.NotifyPopcornNotify,
+        'notify_response': False,
+    }),
+    ('popcorn://{}/abc'.format('b' * 9), {
+        # invalid email
+        'instance': plugins.NotifyPopcornNotify,
+        'notify_response': False,
+    }),
+    ('popcorn://{}/15551232000/user@example.com'.format('c' * 9), {
+        # value phone and email
+        'instance': plugins.NotifyPopcornNotify,
+    }),
+    ('popcorn://{}/15551232000/user@example.com?batch=yes'.format('w' * 9), {
+        # value phone and email with batch mode set
+        'instance': plugins.NotifyPopcornNotify,
+    }),
+    ('popcorn://{}/?to=15551232000'.format('w' * 9), {
+        # reference to to=
+        'instance': plugins.NotifyPopcornNotify,
+    }),
+    ('popcorn://{}/15551232000'.format('x' * 9), {
+        'instance': plugins.NotifyPopcornNotify,
+        # force a failure
+        'response': False,
+        'requests_response_code': requests.codes.internal_server_error,
+    }),
+    ('popcorn://{}/15551232000'.format('y' * 9), {
+        'instance': plugins.NotifyPopcornNotify,
+        # throw a bizzare code forcing us to fail to look it up
+        'response': False,
+        'requests_response_code': 999,
+    }),
+    ('popcorn://{}/15551232000'.format('z' * 9), {
+        'instance': plugins.NotifyPopcornNotify,
+        # Throws a series of connection and transfer exceptions when this flag
+        # is set and tests that we gracfully handle them
+        'test_requests_exceptions': True,
+    }),
+
+    ##################################
     # NotifyWebexTeams
     ##################################
     ('wxteams://', {
@@ -4206,6 +4254,33 @@ def test_notify_join_plugin(mock_post, mock_get):
     # Test notifications without a body or a title; nothing to send
     # so we return False
     p.notify(body=None, title=None, notify_type=NotifyType.INFO) is False
+
+
+@mock.patch('requests.post')
+def test_notify_popcornnotify_plugin(mock_post):
+    """
+    API: NotifyPopcornNotify() Extra Checks
+
+    """
+    # Disable Throttling to speed testing
+    plugins.NotifyBase.request_rate_per_sec = 0
+
+    # Prepare our response
+    response = requests.Request()
+    response.status_code = requests.codes.ok
+
+    # Prepare Mock
+    mock_post.return_value = response
+
+    try:
+        # No authkey specified
+        plugins.NotifyPopcornNotify(apikey=None)
+        assert False
+
+    except TypeError:
+        # Exception should be thrown about the fact authkey was not
+        # specified
+        assert True
 
 
 def test_notify_pover_plugin():
